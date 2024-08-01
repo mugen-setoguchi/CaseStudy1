@@ -1,0 +1,240 @@
+# Analyze(データの解析)
+## データの形状
+```{r}
+summary(preprocess_df)
+```
+
+データ数が約600万とかなり多い。
+
+
+## memberとcasualの割合
+### memberとcasualの1年会の利用数
+```{r, echo=FALSE}
+preprocess_df %>% select(member_casual) %>% table %>% print
+```
+
+### memberとcasualの1年会の利用割合
+```{r, echo=FALSE}
+preprocess_df %>% select(member_casual) %>% table %>% prop.table %>% print
+```
+これが、現状での、メンバーとカジュアルの比率である。
+この比率が変化する要因を見つけることが、今回の分析の目標でもある。
+
+
+## バイクの利用比率
+### 全体での利用比率 
+```{r, echo=FALSE}
+# preprocess_df %>% select(rideable_type ) %>% table %>% print
+preprocess_df %>% select(rideable_type ) %>% table %>% prop.table %>% print
+```
+
+### 利用形態ごとのバイクの利用比率
+```{r, echo=FALSE}
+# paste0(preprocess_df[, "member_casual"], ":", preprocess_df[, "rideable_type"]) %>% table %>% print
+paste0(preprocess_df[, "member_casual"], ":", preprocess_df[, "rideable_type"]) %>% table %>% prop.table %>% print
+```
+- docked_bikeは、Casualにしか存在しない。
+- Casualは、memberに比べて電動自転車を好んで使うことが分かる.
+
+
+## 利用距離の分布
+### 利用形態ごとの利用距離の分布
+```{r, echo=FALSE, wanings=FALSE, message=FALSE}
+preprocess_df %>% ggplot(aes(x=dist, fill=member_casual)) + geom_histogram(position="dodge")
+```
+
+- 15km(15000m)の以上の利用者は、41877人と少ないにも関わらず、図が引っ張られてしまうため、分析では、
+10km以下の方に限定する.
+- 距離が極端に短い(同じところに戻ってきている)は、分析するときに注意が必要である。
+
+### 利用形態ごとの利用距離の分布(修正したもの)
+```{r, echo=FALSE, wanings=FALSE, message=FALSE}
+preprocess_df %>% filter(dist <= 10000) %>% ggplot(aes(x=dist, fill=member_casual)) + geom_histogram(position="dodge")
+```
+
+## 利用時間の分布
+### 利用形態ごとの利用時間の分布
+
+```{r, echo=FALSE, wanings=FALSE, message=FALSE}
+preprocess_df %>% filter(dist <= 10000) %>% ggplot(aes(x=time, fill=member_casual)) + geom_histogram(position="dodge")
+```
+
+- 1時間30分以上の利用者数は、63623人と比較的少ないため、1時間30分以内の人を分析対象に考える.
+
+### 利用形態ごとの利用時間の分布(修正したもの)
+```{r, echo=FALSE, wanings=FALSE, message=FALSE}
+preprocess_df %>% filter(dist <= 10000, time <= 3600 * 1.5) %>% ggplot(aes(x=time, fill=member_casual)) +     
+  geom_histogram(position="dodge")
+```
+
+
+## 利用時間と走行距離(直線距離の散布図)
+
+```{r, echo=FALSE, wanings=FALSE, message=FALSE}
+preprocess_df %>% filter(dist <= 10000, time <= 3600 * 1.5) %>% 
+  sample_n(size=50000) %>% ggplot(aes(x = time, y=dist, colour=member_casual)) + geom_point()
+```
+
+- 走行距離がほぼ0のものは、利用したが同じstationに自転車を返したもの。
+- memberのほうが、効率的な利用をしていることが分かる。(時間に対して、走行距離が長いものが多い)
+- casualのほうが、近くのstationに自転車を戻す傾向にあることが分かる。
+
+## 利用日時ごとの分布
+### 曜日ごとの分布
+1 ~ 7(日曜日 ~ 土曜日)を表す。
+```{r, wanings=FALSE, message=FALSE}
+preprocess_df %>% filter(dist <= 10000, time <= 3600 * 1.5) %>% 
+  ggplot(aes(x=week_day, fill=member_casual)) + geom_histogram(position="dodge")
+```
+
+- 図より、memberは、casualより平日利用する傾向があることがわかる。
+
+### 1日の時間帯ごとの分布
+```{r, wanings=FALSE, message=FALSE}
+preprocess_df %>% filter(dist <= 10000, time <= 3600 * 1.5) %>% 
+  mutate(hour = as.factor(hour(started_at))) %>% ggplot(aes(x=hour, fill=member_casual)) + geom_bar(position="dodge")
+```
+- 図より、朝の、7時~10時、15~20時の間がメンバーと非メンバーの間で差がありそう
+
+### 曜日と時間ごとの、利用数の分布
+```{r, wanings=FALSE, message=FALSE}
+preprocess_df %>% filter(dist <= 10000, time <= 3600 * 1.5) %>% 
+  mutate(hour = hour(started_at)) %>% 
+  ggplot(aes(x=as.factor(hour), fill=member_casual)) + geom_bar() + 
+  facet_wrap(~as.factor(week_day)) + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+```
+- casualは、土日の昼間によく利用することがわかる。おそら、レジャーや観光
+- memberは、通勤等の日常利用が多い。
+
+
+### 月別の分布
+```{r, wanings=FALSE, message=FALSE}
+preprocess_df %>% filter(dist <= 10000, time <= 3600 * 1.5) %>% 
+  mutate(month = as.factor(month(started_at))) %>% ggplot(aes(x=(month), fill=member_casual)) + geom_bar(position="dodge")
+```
+
+- 11月 ~ 2月は雪の影響か、利用割合が少ないことがわかる。
+- 3月、4月は極端に比率が異なるっている。(メンバーの利用が多い)
+
+
+## 利用時間の分布
+### 曜日と利用平均時間の様子
+```{r, wanings=FALSE, message=FALSE}
+preprocess_df %>% filter(dist <= 10000, time <= 3600 * 1.5) %>% sample_n(10000) %>%
+  ggplot(aes(x=as.factor(week_day), y=time, fill=member_casual)) + geom_boxplot()
+```
+
+
+- どの曜日も、casualの方が、利用時間は長い
+
+
+### 1日の時間帯と利用時間のboxplot
+
+```{r, wanings=FALSE, message=FALSE}
+preprocess_df %>% filter(dist <= 10000, time <= 3600 * 1.5) %>% sample_n(100000) %>% mutate(hour = hour(started_at)) %>% ggplot(aes(x=as.factor(hour), y=time, fill=member_casual)) + geom_boxplot()
+```
+
+- 10:00 ~ 16:00が特に差が大きいことがわかる.この時間帯は、casualの方が利用している.
+
+
+### 月と利用時間
+
+```{r, wanings=FALSE, message=FALSE}
+preprocess_df %>% filter(dist <= 10000, time <= 3600 * 1.5) %>% sample_n(100000) %>% 
+  mutate(month = month(started_at)) %>% 
+  ggplot(aes(x=as.factor(month), y=time, fill=member_casual)) + geom_boxplot()
+```
+
+- 月ごとだと、11月 ~　1月は利用時間が短そう。
+- casualのほうは、月ごとの利用時間のに大きく影響を与えている。
+
+
+## 利用するstationについて
+### stationごとの分布の違い(start)
+登録されたstationから利用を開始した割合
+```{r, wanings=FALSE, message=FALSE}
+preprocess_df %>% filter(dist <= 10000, time <= 3600 * 1.5, start_station_id != "") %>% select(member_casual) %>% table %>% prop.table %>% print
+```
+station外からの利用を開始した割合
+```{r, wanings=FALSE, message=FALSE}
+preprocess_df %>% filter(dist <= 10000, time <= 3600 * 1.5, start_station_id == "") %>% select(member_casual) %>% table %>% prop.table %>% print
+```
+
+
+### stationごとの分布の違い(end)
+登録されたstationに止めた割合
+```{r, echo=FALSE, wanings=FALSE, message=FALSE}
+# cat("\n 登録されたstationに止めた割合 \n")
+preprocess_df %>% filter(dist <= 10000, time <= 3600 * 1.5, end_station_id != "") %>% select(member_casual) %>% table %>% prop.table %>% print
+```
+stationではない場所に止めた割合
+```{r, echo=FALSE, wanings=FALSE, message=FALSE}
+# cat("\n stationではない場所に止めた割合 \n")
+preprocess_df %>% filter(dist <= 10000, time <= 3600 * 1.5, end_station_id == "") %>% select(member_casual) %>% table %>% prop.table %>% print
+```
+
+- casualは、stattionで利用しない傾向がある(つまり、適当な場所に止めている)
+
+### casualのmemberの利用開始stationの分布(トップ10
+```{r, echo=FALSE, wanings=FALSE, message=FALSE}
+start_top_10 <- preprocess_df %>% 
+  filter(dist <= 10000, time <= 3600 * 1.5, start_station_name != "") %>%
+  select(start_station_id) %>%
+  table %>% sort(decreasing = TRUE) %>%
+  head(10) %>% names
+
+preprocess_df %>% filter(dist <= 10000, time <= 3600 * 1.5, start_station_id %in% start_top_10) %>%
+  ggplot() + geom_bar(aes(x=start_station_id, fill=member_casual), position = "dodge") + theme(axis.text.x = element_text(angle = 90))
+```
+
+
+### casualのmemberの利用終了stationの分布(トップ10)
+```{r, echo=FALSE, wanings=FALSE, message=FALSE}
+end_top_10 <- preprocess_df %>% 
+  filter(dist <= 10000, time <= 3600 * 1.5, end_station_name != "") %>%
+  select(end_station_id) %>%
+  table %>% sort(decreasing = TRUE) %>%
+  head(10) %>% names
+
+preprocess_df %>% filter(dist <= 10000, time <= 3600 * 1.5, end_station_id %in% end_top_10) %>%
+  ggplot() + geom_bar(aes(x=end_station_id, fill=member_casual), position = "dodge") + 
+  theme(axis.text.x = element_text(angle = 90))
+
+```
+
+- casualとmemberで利用stationには違いがある。
+  - 例えば、13022(statin_id)は、casualの方がよく利用する
+
+### casualの利用station(end)のトップ100の視覚化
+
+```{r}
+library(leaflet)
+
+top_list <- preprocess_df %>% 
+  filter(dist <= 10000, time <= 3600 * 1.5, start_station_name != "",member_casual == "casual") %>%
+  select(start_station_id) %>%
+  table %>% sort(decreasing = TRUE) %>%
+  head(100)
+print(top_list)
+
+lat_vec <- c()
+lng_vec <- c()
+radius_vec <- c()
+for (i in seq_along(top_list)) {
+  s_name <- names(top_list)[i]
+  add_lat <- preprocess_df %>% 
+    filter(start_station_id == s_name) %>% select(end_lat) %>% unlist %>% mean()
+  add_lng <- preprocess_df %>% 
+    filter(start_station_id == s_name) %>% select(end_lng) %>% unlist %>% mean()
+  lat_vec <- c(lat_vec, add_lat)
+  lng_vec <- c(lng_vec, add_lng)
+  radius_vec <- c(radius_vec, as.numeric(top_list[i]))
+}
+
+m <- leaflet() %>%
+  addTiles() %>%
+  addCircles(lng=lng_vec, lat=lat_vec, color="red", radius = sqrt(radius_vec) * 1.5)
+m
+```
+
+- 利用地域は、沿岸の繁華街沿いに集中しているように思われる。

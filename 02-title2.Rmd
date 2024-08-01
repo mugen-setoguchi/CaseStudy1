@@ -1,0 +1,27 @@
+# Process(データのクリーニング)
+## データの前処理
+
+```{r, message=FALSE, warnings=FALSE}
+library(tidyverse)
+library(data.table)
+library(geosphere)
+
+input_df <- fread("data/input_df.csv", data.table=FALSE)
+```
+
+- 余計なデータを削除する
+```{r}
+preprocess_df <- input_df %>% 
+  filter(end_lat != 0, end_lng != 0, !is.na(end_lat),!is.na(end_lng), started_at < ended_at)
+```
+
+- 解析で利用する列の作成
+  - 移動距離(dist)
+  - 経過時間(time)
+```{r}
+preprocess_df <- preprocess_df %>% 
+  mutate(dist = distGeo(cbind(start_lng, start_lat), 
+         cbind(end_lng, end_lat)),
+         time = (ended_at - started_at),
+         week_day = wday(started_at))
+```

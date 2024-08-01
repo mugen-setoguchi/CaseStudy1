@@ -12,6 +12,8 @@ processデータのクリーニング
 analyzeデータの解析
 データの形状
 memberとcasualの割合
+memberとcasualの1年会の利用数
+memberとcasualの1年会の利用割合
 バイクの利用比率
 全体での利用比率
 利用形態ごとのバイクの利用比率

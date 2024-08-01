@@ -1,0 +1,30 @@
+# Prepare(データの確認)
+## 利用したデータについて
+- [分析](https://divvy-tripdata.s3.amazonaws.com/index.html)のデータを分析に利用する
+  - 2023年3月から、2024年4月までのデータを利用した.
+
+## データの説明
+
+| 項目名 | 説明 |
+| ---- | ---- |
+| ride_id | バイクのid |
+| rideable_type | バイクの種類("electric_bike", "classic_bike", "docked_bike"  ) |
+| started_at | 利用開始時刻 |
+| ended_at | 利用終了時刻 |
+| start_station_name | 利用開始のステーション名 |
+| start_station_id | 利用開始のステーションID |
+| end_station_name | 利用終了のステーション名 |
+| end_station_id | 利用終了のステーションID |
+| start_lat | 利用開始時の緯度 |
+| start_lng | 利用開始時の経度 |
+| end_lat| 利用終了時の緯度 |
+| end_lng | 利用終了時の経度 |
+| member_casual | メンバーの種類("member", "casual")がある |
+
+
+## データの完全性について
+データの矛盾しているものが、いくつか見れれた
+
+- start_lat, end_lng, end_lat, end_lngの値が、0もしくは、NAのもの
+- started_atがend_atより、後の時刻になっているもの
+
